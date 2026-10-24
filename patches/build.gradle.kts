@@ -30,6 +30,11 @@ dependencies {
 }
 
 tasks {
+    // The Manager only loads patches from dex entries, which `buildAndroid` adds to the bundle.
+    named("build") {
+        dependsOn("buildAndroid")
+    }
+
     register<JavaExec>("generatePatchesList") {
         description = "Build patch with patch list"
 
