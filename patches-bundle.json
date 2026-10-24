@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-10-08T17:31:01",
-  "description": "Morphe Patches test build (braze-analytics branch): adds Braze to the Disable analytics patch.",
-  "download_url": "https://github.com/willl03/morphe-patches/releases/download/v1.26.1-braze/patches-1.26.1-braze.mpp",
+  "created_at": "2026-10-24T11:09:00",
+  "description": "Morphe Patches test build: Braze analytics neutralization now covers every log event, and warns when the Braze SDK could not be matched.",
+  "download_url": "https://github.com/willl03/morphe-patches/releases/download/v1.26.1-braze.2/patches-1.26.1-braze.2.mpp",
   "signature_download_url": "",
-  "version": "1.26.1-braze"
+  "version": "1.26.1-braze.2"
 }
