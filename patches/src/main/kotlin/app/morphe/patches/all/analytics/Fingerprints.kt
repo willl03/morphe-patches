@@ -100,12 +100,9 @@ object FirebasePerformanceCollectionFingerprint : Fingerprint(
 // Braze
 
 /**
- * Matches `Braze.Companion.configure(Context, BrazeConfig)` — the single entry
- * point that queues the SDK configuration (v42+ "delayed initialization" just
- * stores the config; the instance is created lazily by `getInstance`).
- * Returning `false` without queueing leaves any lazily-created instance with
- * an empty API key, which the SDK tolerates: `verifyProperSdkSetup` only logs
- * a warning ("requires a non-empty API key") and returns.
+ * Matches `Braze.Companion.configure(Context, BrazeConfig)` — queues the SDK
+ * configuration; returning `false` leaves the SDK unconfigured, so nothing is
+ * collected or sent.
  */
 object BrazeConfigureFingerprint : Fingerprint(
     definingClass = "Lcom/braze/Braze\$Companion;",
@@ -115,9 +112,8 @@ object BrazeConfigureFingerprint : Fingerprint(
 )
 
 /**
- * Matches `Braze.Companion.enableSdk(Context)` — re-enables the SDK after a
- * `disableSdk` call (host apps toggle this on login). Neutralized so the SDK
- * cannot be re-enabled at runtime; `disableSdk` is left intact.
+ * Matches `Braze.Companion.enableSdk(Context)` — neutralized so host apps
+ * cannot re-enable the SDK after `disableSdk`.
  */
 object BrazeEnableSdkFingerprint : Fingerprint(
     definingClass = "Lcom/braze/Braze\$Companion;",
@@ -127,26 +123,22 @@ object BrazeEnableSdkFingerprint : Fingerprint(
 )
 
 /**
- * Matches `Braze.setUserSpecificMemberVariablesAndStartDispatch(...)` —
- * installs the UDM and starts the dispatch worker that performs device
- * registration and ships queued events/requests. Called at the tail of
- * `getInstance`'s init sequence (only logging follows), and every later `udm`
- * read in the public API is guarded by the SDK's own
- * `earlyReturnIfUdmUninitialized`. Returning early therefore parks the SDK in
- * its tolerated "not started" state: no dispatch, no device registration,
- * no outbound requests. The internal parameter type (`bo.app.*`) is
- * intentionally not pinned — it is minified and changes between SDK versions.
+ * Matches `Braze.setUserSpecificMemberVariablesAndStartDispatch` — installs the
+ * user data model and starts the event dispatch pipeline.
+ * The single parameter's type is re-obfuscated every release (`bo.app.*`,
+ * `com.braze.managers.*`), so only its arity is pinned.
  */
 object BrazeDispatchStartFingerprint : Fingerprint(
     definingClass = "Lcom/braze/Braze;",
     name = "setUserSpecificMemberVariablesAndStartDispatch",
     returnType = "V",
-    custom = { method, _ -> method.implementation != null },
+    custom = { method, _ ->
+        method.implementation != null && method.parameterTypes.size == 1
+    },
 )
 
 /**
- * Matches `Braze.openSession(Activity)` — session start from the automatic
- * activity lifecycle tracking.
+ * Matches `Braze.openSession(Activity)` — session start reporting.
  */
 object BrazeOpenSessionFingerprint : Fingerprint(
     definingClass = "Lcom/braze/Braze;",
@@ -156,8 +148,7 @@ object BrazeOpenSessionFingerprint : Fingerprint(
 )
 
 /**
- * Matches `Braze.closeSession(Activity)` — session end from the automatic
- * activity lifecycle tracking.
+ * Matches `Braze.closeSession(Activity)` — session end reporting.
  */
 object BrazeCloseSessionFingerprint : Fingerprint(
     definingClass = "Lcom/braze/Braze;",
@@ -167,28 +158,8 @@ object BrazeCloseSessionFingerprint : Fingerprint(
 )
 
 /**
- * Matches all `Braze.logCustomEvent(...)` overloads — custom event reporting.
- */
-object BrazeLogCustomEventFingerprint : Fingerprint(
-    definingClass = "Lcom/braze/Braze;",
-    name = "logCustomEvent",
-    returnType = "V",
-    custom = { method, _ -> method.implementation != null },
-)
-
-/**
- * Matches all `Braze.logPurchase(...)` overloads — purchase reporting.
- */
-object BrazeLogPurchaseFingerprint : Fingerprint(
-    definingClass = "Lcom/braze/Braze;",
-    name = "logPurchase",
-    returnType = "V",
-    custom = { method, _ -> method.implementation != null },
-)
-
-/**
- * Matches all `Braze.changeUser(...)` overloads — user identification
- * (switches the anonymous device user to a named user).
+ * Matches `Braze.changeUser(...)` — user identification (switches the
+ * anonymous device user to a named user).
  */
 object BrazeChangeUserFingerprint : Fingerprint(
     definingClass = "Lcom/braze/Braze;",
@@ -198,12 +169,15 @@ object BrazeChangeUserFingerprint : Fingerprint(
 )
 
 /**
- * Matches `Braze.logPushNotificationOpened(Intent)` — push open/click
- * attribution reporting.
+ * Matches every `Braze.log*` reporting method — custom events, purchases,
+ * ecommerce, banners, feature flags and push attribution. `logout` is excluded.
  */
-object BrazeLogPushNotificationOpenedFingerprint : Fingerprint(
+object BrazeLogEventFingerprint : Fingerprint(
     definingClass = "Lcom/braze/Braze;",
-    name = "logPushNotificationOpened",
-    returnType = "V",
-    parameters = listOf("Landroid/content/Intent;"),
+    custom = { method, _ ->
+        method.implementation != null &&
+            method.name.startsWith("log") &&
+            method.name != "logout" &&
+            (method.returnType == "V" || method.returnType == "Z")
+    },
 )
